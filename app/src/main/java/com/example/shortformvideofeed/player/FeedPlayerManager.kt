@@ -1,0 +1,129 @@
+package com.example.shortformvideofeed.player
+
+import android.content.Context
+import android.os.SystemClock
+import androidx.media3.common.MediaItem
+import androidx.media3.common.Player
+import androidx.media3.exoplayer.ExoPlayer
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.update
+
+data class PlaybackUiState(
+    val selectedItemId: String? = null,
+    val playbackState: Int = Player.STATE_IDLE,
+    val isBuffering: Boolean = false,
+    val isPlaying: Boolean = false,
+    val lastError: String? = null,
+    val startupLatencyMs: Long? = null
+)
+
+class FeedPlayerManager(context: Context) {
+
+    private val appContext = context.applicationContext
+    val player = ExoPlayer.Builder(appContext).build()
+
+    private val preloadPlayer = ExoPlayer.Builder(appContext).build()
+    private val _playbackState = MutableStateFlow(PlaybackUiState())
+    val playbackState: StateFlow<PlaybackUiState> = _playbackState
+
+    private var selectedItemId: String? = null
+    private var selectedAtMs: Long = 0L
+    private var expectingFirstFrameForId: String? = null
+    private var nextPreloadUrl: String? = null
+
+    init {
+        player.addListener(
+            object : Player.Listener {
+                override fun onPlaybackStateChanged(playbackState: Int) {
+                    _playbackState.update {
+                        it.copy(
+                            playbackState = playbackState,
+                            isBuffering = playbackState == Player.STATE_BUFFERING,
+                            isPlaying = it.isPlaying
+                        )
+                    }
+                }
+
+                override fun onIsPlayingChanged(isPlaying: Boolean) {
+                    _playbackState.update { it.copy(isPlaying = isPlaying) }
+                }
+
+                override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
+                    _playbackState.update {
+                        it.copy(
+                            lastError = error.message ?: "Playback error",
+                            isPlaying = false,
+                            isBuffering = false
+                        )
+                    }
+                }
+
+                override fun onRenderedFirstFrame() {
+                    val itemId = expectingFirstFrameForId ?: return
+                    val latency = SystemClock.elapsedRealtime() - selectedAtMs
+                    _playbackState.update {
+                        if (it.selectedItemId != itemId) it else it.copy(startupLatencyMs = latency)
+                    }
+                    expectingFirstFrameForId = null
+                }
+            }
+        )
+    }
+
+    fun activate(itemId: String?, videoUrl: String?) {
+        _playbackState.update { it.copy(lastError = null) }
+        if (itemId == null || videoUrl.isNullOrBlank()) {
+            pause()
+            selectedItemId = null
+            expectingFirstFrameForId = null
+            _playbackState.update { it.copy(selectedItemId = null) }
+            return
+        }
+
+        if (selectedItemId == itemId && player.playbackState != Player.STATE_IDLE) {
+            player.play()
+            return
+        }
+
+        selectedItemId = itemId
+        selectedAtMs = SystemClock.elapsedRealtime()
+        expectingFirstFrameForId = itemId
+        player.setMediaItem(MediaItem.fromUri(videoUrl))
+        player.prepare()
+        player.play()
+        _playbackState.update {
+            it.copy(
+                selectedItemId = itemId,
+                playbackState = Player.STATE_BUFFERING,
+                isBuffering = true,
+                isPlaying = true,
+                startupLatencyMs = null
+            )
+        }
+    }
+
+    fun preload(nextVideoUrl: String?) {
+        if (nextVideoUrl == null || nextVideoUrl.isBlank() || nextVideoUrl == player.currentMediaItem?.localConfiguration?.uri?.toString()) {
+            return
+        }
+        if (nextVideoUrl == nextPreloadUrl) return
+        nextPreloadUrl = nextVideoUrl
+        preloadPlayer.clearMediaItems()
+        preloadPlayer.setMediaItem(MediaItem.fromUri(nextVideoUrl))
+        preloadPlayer.prepare()
+    }
+
+    fun pause() {
+        player.pause()
+    }
+
+    fun resume() {
+        player.play()
+    }
+
+    fun release() {
+        player.release()
+        preloadPlayer.release()
+    }
+}

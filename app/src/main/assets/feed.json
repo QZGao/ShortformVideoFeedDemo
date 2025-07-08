@@ -1,0 +1,38 @@
+[
+  {
+    "id": "1",
+    "title": "Sample clip 1",
+    "videoUrl": "https://storage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+    "thumbnailUrl": "https://picsum.photos/seed/shortform1/720/1280",
+    "durationMs": 10000,
+    "authorName": "Sample Author",
+    "description": "Phase 1 local JSON seed item"
+  },
+  {
+    "id": "2",
+    "title": "Sample clip 2",
+    "videoUrl": "https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4",
+    "thumbnailUrl": "https://picsum.photos/seed/shortform2/720/1280",
+    "durationMs": 10000,
+    "authorName": "Sample Author",
+    "description": "Phase 1 local JSON seed item"
+  },
+  {
+    "id": "3",
+    "title": "Sample clip 3",
+    "videoUrl": "https://storage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
+    "thumbnailUrl": "https://picsum.photos/seed/shortform3/720/1280",
+    "durationMs": 10000,
+    "authorName": "Sample Author",
+    "description": "Phase 1 local JSON seed item"
+  },
+  {
+    "id": "4",
+    "title": "Sample clip 4",
+    "videoUrl": "https://storage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4",
+    "thumbnailUrl": "https://picsum.photos/seed/shortform4/720/1280",
+    "durationMs": 10000,
+    "authorName": "Sample Author",
+    "description": "Phase 1 local JSON seed item"
+  }
+]
