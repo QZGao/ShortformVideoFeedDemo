@@ -5,6 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import com.example.shortformvideofeed.app.AppContainer
 import com.example.shortformvideofeed.domain.usecase.ObserveFeedUseCase
+import com.example.shortformvideofeed.domain.usecase.ObservePagedFeedUseCase
 import com.example.shortformvideofeed.domain.usecase.RefreshFeedUseCase
 import com.example.shortformvideofeed.player.FeedPlayerManager
 import com.example.shortformvideofeed.ui.feed.FeedScreen
@@ -22,6 +23,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             val feedViewModel = FeedViewModel(
                 observeFeedUseCase = ObserveFeedUseCase(container.feedRepository),
+                observePagedFeedUseCase = ObservePagedFeedUseCase(container.feedRepository),
                 refreshFeedUseCase = RefreshFeedUseCase(container.feedRepository),
                 playerManager = playerManager
             )

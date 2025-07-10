@@ -3,17 +3,23 @@ package com.example.shortformvideofeed.data.local
 import android.content.Context
 import com.example.shortformvideofeed.data.remote.FeedDto
 import com.example.shortformvideofeed.data.mapper.toDomain
+import com.example.shortformvideofeed.domain.model.VideoItem
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
+interface FeedLocalDataSource {
+    suspend fun loadSeedFeed(): List<VideoItem>
+}
+
 class FeedLocalJsonDataSource(
     private val context: Context
-) {
+) : FeedLocalDataSource {
+
     private val gson by lazy { Gson() }
 
-    suspend fun loadSeedFeed(): List<com.example.shortformvideofeed.domain.model.VideoItem> = withContext(Dispatchers.IO) {
+    override suspend fun loadSeedFeed(): List<VideoItem> = withContext(Dispatchers.IO) {
         val assetStream = context.assets.open("feed.json")
         assetStream.use { input ->
             val json = input.bufferedReader().readText()

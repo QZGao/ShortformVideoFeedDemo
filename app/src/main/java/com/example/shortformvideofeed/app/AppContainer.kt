@@ -4,7 +4,7 @@ import android.app.Application
 import androidx.room.Room
 import com.example.shortformvideofeed.data.local.AppDatabase
 import com.example.shortformvideofeed.data.local.FeedLocalJsonDataSource
-import com.example.shortformvideofeed.data.remote.FeedRemoteDataSource
+import com.example.shortformvideofeed.data.remote.DefaultFeedRemoteDataSource
 import com.example.shortformvideofeed.data.repository.FeedRepositoryImpl
 import com.example.shortformvideofeed.domain.repository.FeedRepository
 
@@ -19,7 +19,7 @@ class AppContainer(application: Application) {
 
         FeedRepositoryImpl(
             localDataSource = FeedLocalJsonDataSource(application),
-            remoteDataSource = FeedRemoteDataSource(),
+            remoteDataSource = DefaultFeedRemoteDataSource(),
             dao = db.videoDao()
         )
     }

@@ -1,6 +1,7 @@
 package com.example.shortformvideofeed.ui.feed
 
 import com.example.shortformvideofeed.domain.model.VideoItem
+import com.example.shortformvideofeed.domain.model.PreloadMode
 import com.example.shortformvideofeed.domain.repository.FeedSource
 
 data class FeedUiState(
@@ -9,5 +10,6 @@ data class FeedUiState(
     val items: List<VideoItem> = emptyList(),
     val activeItemIndex: Int = 0,
     val source: FeedSource = FeedSource.UNKNOWN,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val preloadMode: PreloadMode = PreloadMode.NEXT_1
 )

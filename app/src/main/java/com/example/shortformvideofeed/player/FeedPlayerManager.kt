@@ -23,14 +23,13 @@ class FeedPlayerManager(context: Context) {
     private val appContext = context.applicationContext
     val player = ExoPlayer.Builder(appContext).build()
 
-    private val preloadPlayer = ExoPlayer.Builder(appContext).build()
+    private val preloadPlayers = List(2) { ExoPlayer.Builder(appContext).build() }
     private val _playbackState = MutableStateFlow(PlaybackUiState())
     val playbackState: StateFlow<PlaybackUiState> = _playbackState
 
     private var selectedItemId: String? = null
     private var selectedAtMs: Long = 0L
     private var expectingFirstFrameForId: String? = null
-    private var nextPreloadUrl: String? = null
 
     init {
         player.addListener(
@@ -103,15 +102,28 @@ class FeedPlayerManager(context: Context) {
         }
     }
 
-    fun preload(nextVideoUrl: String?) {
-        if (nextVideoUrl == null || nextVideoUrl.isBlank() || nextVideoUrl == player.currentMediaItem?.localConfiguration?.uri?.toString()) {
+    fun preload(nextVideoUrls: List<String>) {
+        val sanitized = nextVideoUrls
+            .map { it.trim() }
+            .filter { it.isNotBlank() }
+            .filter { it != player.currentMediaItem?.localConfiguration?.uri?.toString() }
+
+        if (sanitized.isEmpty()) {
+            preloadPlayers.forEach { it.clearMediaItems() }
             return
         }
-        if (nextVideoUrl == nextPreloadUrl) return
-        nextPreloadUrl = nextVideoUrl
-        preloadPlayer.clearMediaItems()
-        preloadPlayer.setMediaItem(MediaItem.fromUri(nextVideoUrl))
-        preloadPlayer.prepare()
+
+        preloadPlayers.forEachIndexed { index, player ->
+            val url = sanitized.getOrNull(index)
+            if (url == null) {
+                player.clearMediaItems()
+                return@forEachIndexed
+            }
+            if (player.currentMediaItem?.localConfiguration?.uri?.toString() == url) return@forEachIndexed
+            player.clearMediaItems()
+            player.setMediaItem(MediaItem.fromUri(url))
+            player.prepare()
+        }
     }
 
     fun pause() {
@@ -124,6 +136,6 @@ class FeedPlayerManager(context: Context) {
 
     fun release() {
         player.release()
-        preloadPlayer.release()
+        preloadPlayers.forEach { it.release() }
     }
 }

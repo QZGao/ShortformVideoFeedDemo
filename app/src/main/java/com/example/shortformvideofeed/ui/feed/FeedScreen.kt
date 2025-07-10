@@ -3,6 +3,7 @@ package com.example.shortformvideofeed.ui.feed
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -12,7 +13,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
@@ -20,6 +21,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -31,16 +33,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.common.Player
 import androidx.media3.ui.PlayerView
+import androidx.paging.compose.collectAsLazyPagingItems
+import androidx.paging.LoadState
 import coil.compose.AsyncImage
-import com.example.shortformvideofeed.domain.model.VideoItem
+import com.example.shortformvideofeed.domain.model.PreloadMode
 import com.example.shortformvideofeed.player.FeedPlayerManager
 import com.example.shortformvideofeed.player.PlaybackUiState
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -51,6 +52,7 @@ fun FeedScreen(viewModel: FeedViewModel, playerManager: FeedPlayerManager) {
     val state by viewModel.state.collectAsState()
     val listState = rememberLazyListState()
     val playbackState by playerManager.playbackState.collectAsState()
+    val pagingItems = viewModel.pagedFeed.collectAsLazyPagingItems()
 
     LaunchedEffect(listState) {
         snapshotFlow { listState.firstVisibleItemIndex }
@@ -59,9 +61,9 @@ fun FeedScreen(viewModel: FeedViewModel, playerManager: FeedPlayerManager) {
             .collect { index -> viewModel.onActiveItemChanged(index) }
     }
 
-    if (state.items.isNotEmpty()) {
-        LaunchedEffect(state.activeItemIndex, state.items) {
-            viewModel.onActiveItemChanged(state.activeItemIndex)
+    LaunchedEffect(state.activeItemIndex) {
+        if (state.activeItemIndex < pagingItems.itemCount) {
+            listState.scrollToItem(state.activeItemIndex)
         }
     }
 
@@ -73,42 +75,58 @@ fun FeedScreen(viewModel: FeedViewModel, playerManager: FeedPlayerManager) {
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .background(Color.Black)
         ) {
             when {
-                state.isLoading && state.items.isEmpty() -> {
+                (state.isLoading || pagingItems.loadState.refresh is LoadState.Loading) && pagingItems.itemCount == 0 -> {
                     LoadingState()
                 }
-                state.items.isEmpty() -> {
-                    ErrorState(
-                        message = state.errorMessage ?: "No content available.",
-                        onRetry = { viewModel.onPullToRefresh() }
-                    )
+                pagingItems.itemCount == 0 -> {
+                    if (state.errorMessage != null) {
+                        ErrorState(message = state.errorMessage, onRetry = { viewModel.onPullToRefresh() })
+                    } else {
+                        ErrorState(message = "No content available.", onRetry = { viewModel.onPullToRefresh() })
+                    }
                 }
                 else -> {
                     LazyColumn(
                         state = listState,
                         modifier = Modifier.fillMaxSize()
                     ) {
-                        itemsIndexed(state.items, key = { _, item -> item.id }) { index, item ->
-                            FeedVideoItem(
-                                item = item,
-                                isActive = index == state.activeItemIndex,
-                                playerManager = playerManager,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .fillMaxHeight()
-                            )
+                        items(
+                            count = pagingItems.itemCount,
+                            key = { index ->
+                                pagingItems[index]?.id ?: "placeholder-$index"
+                            }
+                        ) { index ->
+                            val item = pagingItems[index]
+                            if (item == null) {
+                                FeedPlaceholder()
+                            } else {
+                                FeedVideoItem(
+                                    item = item,
+                                    isActive = index == state.activeItemIndex,
+                                    playerManager = playerManager,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .fillMaxHeight()
+                                )
+                            }
                         }
                     }
                 }
             }
 
+            if (state.errorMessage != null && pagingItems.itemCount > 0) {
+                NetworkErrorBanner(message = state.errorMessage, onRetry = { viewModel.onPullToRefresh() })
+            }
+
             DebugOverlay(
-                activeItemId = state.items.getOrNull(state.activeItemIndex)?.id,
+                activeItemId = state.items.getOrNull(state.activeItemIndex)?.id ?: pagingItems[state.activeItemIndex]?.id,
                 source = state.source.name,
                 isBuffering = playbackState.isBuffering,
-                playbackState = playbackState
+                playbackState = playbackState,
+                preloadMode = state.preloadMode,
+                onPreloadModeChange = { mode -> viewModel.onPreloadModeChanged(mode) }
             )
         }
     }
@@ -132,7 +150,6 @@ private fun ErrorState(message: String, onRetry: () -> Unit) {
                 text = message,
                 color = Color.White,
                 style = MaterialTheme.typography.bodyLarge,
-                textAlign = TextAlign.Center
             )
             Spacer(modifier = Modifier.size(8.dp))
             Button(onClick = onRetry) {
@@ -143,13 +160,36 @@ private fun ErrorState(message: String, onRetry: () -> Unit) {
 }
 
 @Composable
+private fun NetworkErrorBanner(message: String, onRetry: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(12.dp)
+            .align(Alignment.TopCenter)
+    ) {
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = Color(0xCC000000)),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(text = message, color = Color.White, fontSize = 12.sp)
+                Button(onClick = onRetry) {
+                    Text(text = "Retry")
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun FeedVideoItem(
-    item: VideoItem,
+    item: com.example.shortformvideofeed.domain.model.VideoItem,
     isActive: Boolean,
     playerManager: FeedPlayerManager,
     modifier: Modifier = Modifier
 ) {
-    Box(modifier = modifier.background(Color.Black)) {
+    Box(modifier = modifier) {
         if (isActive) {
             AndroidView(
                 factory = { context ->
@@ -180,20 +220,27 @@ private fun FeedVideoItem(
         ) {
             Text(
                 text = item.title,
-                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold),
+                style = MaterialTheme.typography.titleLarge,
                 color = Color.White,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+                maxLines = 1
             )
             Text(
                 text = item.description,
                 style = MaterialTheme.typography.bodyMedium,
                 color = Color.White.copy(alpha = 0.8f),
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
+                maxLines = 2
             )
         }
     }
+}
+
+@Composable
+private fun FeedPlaceholder() {
+    Box(modifier = Modifier
+        .fillMaxWidth()
+        .fillMaxHeight()
+        .background(Color.DarkGray)
+    )
 }
 
 @Composable
@@ -201,11 +248,12 @@ private fun DebugOverlay(
     activeItemId: String?,
     source: String,
     isBuffering: Boolean,
-    playbackState: PlaybackUiState
+    playbackState: PlaybackUiState,
+    preloadMode: PreloadMode,
+    onPreloadModeChange: (PreloadMode) -> Unit
 ) {
     Card(
         modifier = Modifier
-            .fillMaxWidth()
             .align(Alignment.TopStart)
             .navigationBarsPadding()
             .padding(12.dp),
@@ -217,14 +265,31 @@ private fun DebugOverlay(
             Text(text = "Active item: ${activeItemId ?: "none"}", color = Color.White, fontSize = 12.sp)
             Text(
                 text = "Player: ${playbackStateLabel(playbackState.playbackState)} | " +
-                        "buffering=$isBuffering | " +
-                        "first-frame=${playbackState.startupLatencyMs?.let { "${it}ms" } ?: "-"}",
+                    "buffering=$isBuffering | " +
+                    "first-frame=${playbackState.startupLatencyMs?.let { "${it}ms" } ?: "-"}",
                 color = Color.White,
                 fontSize = 12.sp,
                 maxLines = 2
             )
             playbackState.lastError?.let {
-                Text(text = "Error: $it", color = Color(0xFFFF6E6E), fontSize = 12.sp)
+                Text(text = "Playback error: $it", color = Color(0xFFFF6E6E), fontSize = 12.sp)
+            }
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                PreloadMode.values().forEach { mode ->
+                    OutlinedButton(
+                        onClick = { onPreloadModeChange(mode) },
+                        enabled = preloadMode != mode,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text(text = mode.name)
+                    }
+                }
             }
         }
     }

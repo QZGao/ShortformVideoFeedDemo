@@ -1,6 +1,7 @@
 package com.example.shortformvideofeed.domain.repository
 
 import com.example.shortformvideofeed.domain.model.VideoItem
+import androidx.paging.PagingData
 import kotlinx.coroutines.flow.Flow
 
 enum class FeedSource {
@@ -19,10 +20,14 @@ sealed interface FeedResult {
     ) : FeedResult
 
     data class Error(
-        val message: String
+        val message: String,
+        val source: FeedSource = FeedSource.UNKNOWN,
+        val recoverable: Boolean = true
     ) : FeedResult
 }
 
 interface FeedRepository {
     fun observeFeed(forceRefresh: Boolean = false): Flow<FeedResult>
+
+    fun observePagedFeed(forceRefresh: Boolean = false): Flow<PagingData<VideoItem>>
 }
