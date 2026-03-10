@@ -39,6 +39,7 @@ class FeedPlayerManager(context: Context) : FeedPlayerController {
     private var selectedItemId: String? = null
     private var selectedAtMs: Long = 0L
     private var expectingFirstFrameForId: String? = null
+    private val playbackPositionByItemId = LinkedHashMap<String, Long>()
 
     init {
         player.addListener(
@@ -58,6 +59,9 @@ class FeedPlayerManager(context: Context) : FeedPlayerController {
                 }
 
                 override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
+                    selectedItemId?.let { itemId ->
+                        playbackPositionByItemId[itemId] = player.currentPosition
+                    }
                     _playbackState.update {
                         it.copy(
                             lastError = error.message ?: "Playback error",
@@ -81,6 +85,11 @@ class FeedPlayerManager(context: Context) : FeedPlayerController {
 
     override fun activate(itemId: String?, videoUrl: String?) {
         _playbackState.update { it.copy(lastError = null) }
+        val previouslySelectedItemId = selectedItemId
+        if (previouslySelectedItemId != null && previouslySelectedItemId != itemId) {
+            playbackPositionByItemId[previouslySelectedItemId] = player.currentPosition
+        }
+
         if (itemId == null || videoUrl.isNullOrBlank()) {
             pause()
             selectedItemId = null
@@ -99,6 +108,9 @@ class FeedPlayerManager(context: Context) : FeedPlayerController {
         expectingFirstFrameForId = itemId
         player.setMediaItem(MediaItem.fromUri(videoUrl))
         player.prepare()
+        playbackPositionByItemId[itemId]?.let { positionMs ->
+            if (positionMs > 0L) player.seekTo(positionMs)
+        }
         player.play()
         _playbackState.update {
             it.copy(
@@ -136,6 +148,9 @@ class FeedPlayerManager(context: Context) : FeedPlayerController {
     }
 
     override fun pause() {
+        selectedItemId?.let { itemId ->
+            playbackPositionByItemId[itemId] = player.currentPosition
+        }
         player.pause()
     }
 
@@ -144,6 +159,9 @@ class FeedPlayerManager(context: Context) : FeedPlayerController {
     }
 
     override fun release() {
+        selectedItemId?.let { itemId ->
+            playbackPositionByItemId[itemId] = player.currentPosition
+        }
         player.release()
         preloadPlayers.forEach { it.release() }
     }

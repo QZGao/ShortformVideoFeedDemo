@@ -110,6 +110,7 @@ class FeedViewModel(
     }
 
     fun onPreloadModeChanged(mode: PreloadMode) {
+        if (_state.value.preloadMode == mode) return
         _state.update { it.copy(preloadMode = mode) }
         val state = _state.value
         preloadForActiveIndex(state.activeItemIndex, state.items)

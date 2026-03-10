@@ -19,9 +19,9 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -38,26 +38,52 @@ import com.example.shortformvideofeed.domain.model.PreloadMode
 import com.example.shortformvideofeed.player.FeedPlayerManager
 import com.example.shortformvideofeed.player.PlaybackUiState
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.filter
+import androidx.compose.foundation.lazy.LazyListState
 
 @Composable
 fun FeedScreen(viewModel: FeedViewModel, playerManager: FeedPlayerManager) {
-    val state by viewModel.state.collectAsState()
+    val state by viewModel.state.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
-    val playbackState by playerManager.playbackState.collectAsState()
+    val playbackState by playerManager.playbackState.collectAsStateWithLifecycle()
     val pagingItems = viewModel.pagedFeed.collectAsLazyPagingItems()
 
     LaunchedEffect(listState) {
-        snapshotFlow { listState.firstVisibleItemIndex }
-            .map { it.coerceAtLeast(0) }
+        snapshotFlow {
+            val visibleItems = listState.visibleItemsForActivation()
+            pickActiveItemIndex(
+                visibleItems = visibleItems,
+                viewportStart = listState.layoutInfo.viewportStartOffset,
+                viewportEnd = listState.layoutInfo.viewportEndOffset
+            )
+        }
             .distinctUntilChanged()
-            .collect { index -> viewModel.onActiveItemChanged(index) }
+            .collect { index ->
+                if (index >= 0) {
+                    viewModel.onActiveItemChanged(index)
+                }
+            }
     }
 
     LaunchedEffect(state.activeItemIndex) {
         if (state.activeItemIndex < pagingItems.itemCount) {
             listState.scrollToItem(state.activeItemIndex)
         }
+    }
+
+    LaunchedEffect(listState) {
+        snapshotFlow { listState.isScrollInProgress }
+            .filter { inProgress -> !inProgress }
+            .collect {
+                val targetIndex = pickSnapItemIndex(
+                    visibleItems = listState.visibleItemsForActivation(),
+                    viewportStart = listState.layoutInfo.viewportStartOffset,
+                    viewportEnd = listState.layoutInfo.viewportEndOffset
+                )
+                if (targetIndex >= 0 && targetIndex != listState.firstVisibleItemIndex) {
+                    listState.animateScrollToItem(targetIndex)
+                }
+            }
     }
 
     Scaffold(
@@ -308,5 +334,15 @@ private fun playbackStateLabel(state: Int): String {
         Player.STATE_ENDED -> "ENDED"
         Player.STATE_IDLE -> "IDLE"
         else -> "UNKNOWN"
+    }
+}
+
+private fun LazyListState.visibleItemsForActivation(): List<VisibleItemVisibility> {
+    return layoutInfo.visibleItemsInfo.map {
+        VisibleItemVisibility(
+            index = it.index,
+            offset = it.offset,
+            size = it.size
+        )
     }
 }
