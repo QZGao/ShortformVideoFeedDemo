@@ -18,14 +18,23 @@ data class PlaybackUiState(
     val startupLatencyMs: Long? = null
 )
 
-class FeedPlayerManager(context: Context) {
+interface FeedPlayerController {
+    val playbackState: StateFlow<PlaybackUiState>
+    fun activate(itemId: String?, videoUrl: String?)
+    fun preload(nextVideoUrls: List<String>)
+    fun pause()
+    fun resume()
+    fun release()
+}
+
+class FeedPlayerManager(context: Context) : FeedPlayerController {
 
     private val appContext = context.applicationContext
     val player = ExoPlayer.Builder(appContext).build()
 
     private val preloadPlayers = List(2) { ExoPlayer.Builder(appContext).build() }
     private val _playbackState = MutableStateFlow(PlaybackUiState())
-    val playbackState: StateFlow<PlaybackUiState> = _playbackState
+    override val playbackState: StateFlow<PlaybackUiState> = _playbackState
 
     private var selectedItemId: String? = null
     private var selectedAtMs: Long = 0L
@@ -70,7 +79,7 @@ class FeedPlayerManager(context: Context) {
         )
     }
 
-    fun activate(itemId: String?, videoUrl: String?) {
+    override fun activate(itemId: String?, videoUrl: String?) {
         _playbackState.update { it.copy(lastError = null) }
         if (itemId == null || videoUrl.isNullOrBlank()) {
             pause()
@@ -102,7 +111,7 @@ class FeedPlayerManager(context: Context) {
         }
     }
 
-    fun preload(nextVideoUrls: List<String>) {
+    override fun preload(nextVideoUrls: List<String>) {
         val sanitized = nextVideoUrls
             .map { it.trim() }
             .filter { it.isNotBlank() }
@@ -126,15 +135,15 @@ class FeedPlayerManager(context: Context) {
         }
     }
 
-    fun pause() {
+    override fun pause() {
         player.pause()
     }
 
-    fun resume() {
+    override fun resume() {
         player.play()
     }
 
-    fun release() {
+    override fun release() {
         player.release()
         preloadPlayers.forEach { it.release() }
     }

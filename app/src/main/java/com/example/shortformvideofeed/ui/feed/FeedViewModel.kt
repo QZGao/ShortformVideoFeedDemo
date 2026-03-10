@@ -11,7 +11,7 @@ import com.example.shortformvideofeed.domain.repository.FeedSource
 import com.example.shortformvideofeed.domain.usecase.ObserveFeedUseCase
 import com.example.shortformvideofeed.domain.usecase.ObservePagedFeedUseCase
 import com.example.shortformvideofeed.domain.usecase.RefreshFeedUseCase
-import com.example.shortformvideofeed.player.FeedPlayerManager
+import com.example.shortformvideofeed.player.FeedPlayerController
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.Job
@@ -27,7 +27,7 @@ class FeedViewModel(
     private val observeFeedUseCase: ObserveFeedUseCase,
     observePagedFeedUseCase: ObservePagedFeedUseCase,
     private val refreshFeedUseCase: RefreshFeedUseCase,
-    private val playerManager: FeedPlayerManager
+    private val playerManager: FeedPlayerController
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(FeedUiState())
