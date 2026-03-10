@@ -1,4 +1,4 @@
-# Media3 Shortform Feed Performance/Reliability Lab
+# Media3 Shortform Feed Performance/Reliability Demo
 
 This project demonstrates a short-form feed stack with two data sources:
 
@@ -78,7 +78,7 @@ It should point at a JSON array matching:
 
 ## Notes for next iteration
 
-- Improve visibility threshold logic (60% rule)
-- Add better scroll snapping behavior
-- Add explicit lifecycle-safe collection of playback errors
-- Add pull-to-refresh and persistence of playback position
+- [ ] Improve visibility threshold logic (60% rule)
+- [ ] Add better scroll snapping behavior
+- [ ] Add explicit lifecycle-safe collection of playback errors
+- [ ] Add pull-to-refresh and persistence of playback position
