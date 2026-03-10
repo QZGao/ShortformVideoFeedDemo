@@ -51,6 +51,7 @@ android {
 
 dependencies {
     implementation("androidx.core:core-ktx:1.13.1")
+    implementation("androidx.appcompat:appcompat:1.7.0")
     implementation("androidx.activity:activity-compose:1.9.2")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.5")
     implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.5")
@@ -77,12 +78,15 @@ dependencies {
 
     implementation("androidx.room:room-runtime:2.6.1")
     implementation("androidx.room:room-ktx:2.6.1")
+    implementation("androidx.room:room-paging:2.6.1")
     kapt("androidx.room:room-compiler:2.6.1")
 
     implementation("androidx.paging:paging-runtime:3.3.4")
     implementation("androidx.paging:paging-compose:3.3.4")
 
     testImplementation("junit:junit:4.13.2")
+    testImplementation("org.jetbrains.kotlin:kotlin-test:1.9.23")
+    testImplementation("org.jetbrains.kotlin:kotlin-test-junit:1.9.23")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1")
     testImplementation("app.cash.turbine:turbine:1.1.0")
     testImplementation("androidx.paging:paging-common:3.3.4")

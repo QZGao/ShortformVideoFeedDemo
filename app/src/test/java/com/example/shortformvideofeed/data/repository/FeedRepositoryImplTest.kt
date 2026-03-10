@@ -123,21 +123,21 @@ class FeedRepositoryImplTest {
     }
 
     private class FakeVideoDao(initialItems: List<VideoEntity> = emptyList()) : VideoDao {
-        private val items = initialItems.toMutableList()
+        private val storedItems = initialItems.toMutableList()
 
-        override suspend fun count(): Int = items.size
+        override suspend fun count(): Int = storedItems.size
 
-        override suspend fun getAllOrdered(): List<VideoEntity> = items.sortedBy { it.orderIndex }
+        override suspend fun getAllOrdered(): List<VideoEntity> = storedItems.sortedBy { it.orderIndex }
 
         override fun pagingSource() = throw UnsupportedOperationException("Not needed for repository list tests")
 
-        override suspend fun upsertAll(newItems: List<VideoEntity>) {
-            items.clear()
-            items.addAll(newItems)
+        override suspend fun upsertAll(items: List<VideoEntity>) {
+            storedItems.clear()
+            storedItems.addAll(items)
         }
 
         override suspend fun clear() {
-            items.clear()
+            storedItems.clear()
         }
     }
 }

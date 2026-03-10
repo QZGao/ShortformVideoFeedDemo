@@ -1,14 +1,7 @@
 package com.example.shortformvideofeed.ui.feed
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -81,8 +74,9 @@ fun FeedScreen(viewModel: FeedViewModel, playerManager: FeedPlayerManager) {
                     LoadingState()
                 }
                 pagingItems.itemCount == 0 -> {
-                    if (state.errorMessage != null) {
-                        ErrorState(message = state.errorMessage, onRetry = { viewModel.onPullToRefresh() })
+                    val errorMessage = state.errorMessage
+                    if (errorMessage != null) {
+                        ErrorState(message = errorMessage, onRetry = { viewModel.onPullToRefresh() })
                     } else {
                         ErrorState(message = "No content available.", onRetry = { viewModel.onPullToRefresh() })
                     }
@@ -116,8 +110,14 @@ fun FeedScreen(viewModel: FeedViewModel, playerManager: FeedPlayerManager) {
                 }
             }
 
-            if (state.errorMessage != null && pagingItems.itemCount > 0) {
-                NetworkErrorBanner(message = state.errorMessage, onRetry = { viewModel.onPullToRefresh() })
+            state.errorMessage?.let { errorMessage ->
+                if (pagingItems.itemCount > 0) {
+                    NetworkErrorBanner(
+                        message = errorMessage,
+                        onRetry = { viewModel.onPullToRefresh() },
+                        modifier = Modifier.align(Alignment.TopCenter)
+                    )
+                }
             }
 
             DebugOverlay(
@@ -126,7 +126,11 @@ fun FeedScreen(viewModel: FeedViewModel, playerManager: FeedPlayerManager) {
                 isBuffering = playbackState.isBuffering,
                 playbackState = playbackState,
                 preloadMode = state.preloadMode,
-                onPreloadModeChange = { mode -> viewModel.onPreloadModeChanged(mode) }
+                onPreloadModeChange = { mode -> viewModel.onPreloadModeChanged(mode) },
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .navigationBarsPadding()
+                    .padding(12.dp)
             )
         }
     }
@@ -160,12 +164,16 @@ private fun ErrorState(message: String, onRetry: () -> Unit) {
 }
 
 @Composable
-private fun NetworkErrorBanner(message: String, onRetry: () -> Unit) {
+private fun NetworkErrorBanner(
+    message: String,
+    onRetry: () -> Unit,
+    modifier: Modifier = Modifier
+) {
     Box(
         modifier = Modifier
+            .then(modifier)
             .fillMaxWidth()
             .padding(12.dp)
-            .align(Alignment.TopCenter)
     ) {
         Card(
             modifier = Modifier.fillMaxWidth(),
@@ -250,13 +258,11 @@ private fun DebugOverlay(
     isBuffering: Boolean,
     playbackState: PlaybackUiState,
     preloadMode: PreloadMode,
-    onPreloadModeChange: (PreloadMode) -> Unit
+    onPreloadModeChange: (PreloadMode) -> Unit,
+    modifier: Modifier = Modifier
 ) {
     Card(
-        modifier = Modifier
-            .align(Alignment.TopStart)
-            .navigationBarsPadding()
-            .padding(12.dp),
+        modifier = modifier,
         colors = CardDefaults.cardColors(containerColor = Color.Black.copy(alpha = 0.7f)),
         shape = RoundedCornerShape(12.dp)
     ) {
