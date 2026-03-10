@@ -8,6 +8,7 @@ import com.example.shortformvideofeed.domain.usecase.ObserveFeedUseCase
 import com.example.shortformvideofeed.domain.usecase.ObservePagedFeedUseCase
 import com.example.shortformvideofeed.domain.usecase.RefreshFeedUseCase
 import com.example.shortformvideofeed.player.FeedPlayerManager
+import com.example.shortformvideofeed.player.SharedPreferencesPlaybackPositionStore
 import com.example.shortformvideofeed.ui.feed.FeedScreen
 import com.example.shortformvideofeed.ui.feed.FeedViewModel
 import com.example.shortformvideofeed.ui.theme.AppTheme
@@ -18,7 +19,10 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val container = AppContainer(application)
-        playerManager = FeedPlayerManager(applicationContext)
+        playerManager = FeedPlayerManager(
+            context = applicationContext,
+            playbackPositionStore = SharedPreferencesPlaybackPositionStore(applicationContext)
+        )
 
         setContent {
             val feedViewModel = FeedViewModel(

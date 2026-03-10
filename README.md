@@ -75,9 +75,3 @@ It should point at a JSON array matching:
   }
 ]
 ```
-
-## Notes for next iteration
-
-- [ ] Add macrobenchmark scenarios (scroll + transition latency)
-- [ ] Add in-app pull-to-refresh gesture interaction (UI-only control exists today)
-- [ ] Persist playback position across process restarts (current restore is in-memory only)

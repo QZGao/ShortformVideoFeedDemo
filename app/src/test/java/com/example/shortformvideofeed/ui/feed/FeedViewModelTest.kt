@@ -29,6 +29,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class FeedViewModelTest {
 
     @Test
@@ -158,6 +159,31 @@ class FeedViewModelTest {
             assertTrue(viewModel.state.value.isRefreshing.not())
             assertEquals(listOf(false, true), repository.observeFeedForceRefreshCalls)
             assertEquals(listOf(false, true), repository.observePagedForceRefreshCalls)
+        }
+    }
+
+    @Test
+    fun onPullToRefresh_setsAndClearsRefreshingState() = runTest {
+        withMainDispatcher(testScheduler) {
+            val repository = FakeFeedRepository(
+                observeFeedFlow = flowOf(FeedResult.Loading, FeedResult.Success(emptyList(), FeedSource.REMOTE)),
+                observePagedFlow = flowOf(PagingData.from(emptyList()))
+            )
+            val player = FakeFeedPlayerController()
+            val viewModel = FeedViewModel(
+                observeFeedUseCase = ObserveFeedUseCase(repository),
+                observePagedFeedUseCase = ObservePagedFeedUseCase(repository),
+                refreshFeedUseCase = RefreshFeedUseCase(repository),
+                playerManager = player
+            )
+            advanceUntilIdle()
+
+            viewModel.onPullToRefresh()
+            assertTrue(viewModel.state.value.isRefreshing)
+
+            advanceUntilIdle()
+
+            assertFalse(viewModel.state.value.isRefreshing)
         }
     }
 
