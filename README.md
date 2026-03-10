@@ -11,12 +11,16 @@ This project demonstrates a short-form feed stack with two data sources:
 - `LazyColumn` feed with one active item tracked by scroll index
 - One shared `Media3 ExoPlayer` instance
 - Auto-activation for active item
-- Local hardcoded JSON seed
+- Local hardcoded JSON seed (`app/src/main/assets/feed.json`)
 - Remote JSON fetch with Retrofit
 - Room cache (`videos` table) for metadata persistence
 - Cached metadata first, then remote refresh
 - Simple retry path on failure
 - Player debug overlay with item + playback state
+- In-app pull-to-refresh interaction (`onPullToRefresh`, UI refresh indicator)
+- Playback position persistence across process restarts (SharedPreferences-backed store)
+- Macrobenchmark scenarios scaffolded under `app/src/androidTest`
+- Basic playback tests + visibility selection tests in unit test suite
 
 ## Project structure
 
@@ -49,6 +53,20 @@ app/src/main/java/com/example/shortformvideofeed/
     FeedViewModel.kt
   ui/theme/Theme.kt
 ```
+
+## Current behavior
+
+- Active item follows scroll visibility and activates its player.
+- Playback state is resumed from saved positions when returning to an item.
+- Refresh calls trigger both remote feed refresh and paged feed refresh.
+- Preload strategy supports:
+  - `NEXT_1` (default)
+  - `NEXT_2`
+  - `OFF`
+
+## Verification
+
+- Unit tests: `./gradlew testDebugUnitTest --no-daemon`
 
 ## Quick run
 
