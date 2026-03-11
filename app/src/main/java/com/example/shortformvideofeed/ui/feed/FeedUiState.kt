@@ -11,5 +11,7 @@ data class FeedUiState(
     val activeItemIndex: Int = 0,
     val source: FeedSource = FeedSource.UNKNOWN,
     val errorMessage: String? = null,
-    val preloadMode: PreloadMode = PreloadMode.NEXT_1
+    val preloadMode: PreloadMode = PreloadMode.NEXT_1,
+    val likedItemIds: Set<String> = emptySet(),
+    val isBadNetworkEnabled: Boolean = false
 )

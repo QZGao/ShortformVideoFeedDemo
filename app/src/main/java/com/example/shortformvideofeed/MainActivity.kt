@@ -29,7 +29,9 @@ class MainActivity : ComponentActivity() {
                 observeFeedUseCase = ObserveFeedUseCase(container.feedRepository),
                 observePagedFeedUseCase = ObservePagedFeedUseCase(container.feedRepository),
                 refreshFeedUseCase = RefreshFeedUseCase(container.feedRepository),
-                playerManager = playerManager
+                playerManager = playerManager,
+                networkSimulationState = container.networkSimulationState,
+                videoInteractionStore = container.videoInteractionStore
             )
 
             AppTheme {

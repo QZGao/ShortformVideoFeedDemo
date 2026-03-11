@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.paging.PagingData
 import androidx.paging.cachedIn
+import com.example.shortformvideofeed.core.network.NetworkSimulationState
 import com.example.shortformvideofeed.domain.model.PreloadMode
 import com.example.shortformvideofeed.domain.model.VideoItem
 import com.example.shortformvideofeed.domain.repository.FeedResult
@@ -12,6 +13,8 @@ import com.example.shortformvideofeed.domain.usecase.ObserveFeedUseCase
 import com.example.shortformvideofeed.domain.usecase.ObservePagedFeedUseCase
 import com.example.shortformvideofeed.domain.usecase.RefreshFeedUseCase
 import com.example.shortformvideofeed.player.FeedPlayerController
+import com.example.shortformvideofeed.data.local.VideoInteractionStore
+import com.example.shortformvideofeed.data.local.InMemoryVideoInteractionStore
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.Job
@@ -27,7 +30,9 @@ class FeedViewModel(
     private val observeFeedUseCase: ObserveFeedUseCase,
     observePagedFeedUseCase: ObservePagedFeedUseCase,
     private val refreshFeedUseCase: RefreshFeedUseCase,
-    private val playerManager: FeedPlayerController
+    private val playerManager: FeedPlayerController,
+    private val networkSimulationState: NetworkSimulationState,
+    private val videoInteractionStore: VideoInteractionStore = InMemoryVideoInteractionStore()
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(FeedUiState())
@@ -49,6 +54,12 @@ class FeedViewModel(
     private var loadJob: Job? = null
 
     init {
+        _state.update {
+            it.copy(
+                likedItemIds = videoInteractionStore.getLikedItemIds(),
+                isBadNetworkEnabled = networkSimulationState.isBadNetworkEnabled()
+            )
+        }
         load(forceRefresh = false)
     }
 
@@ -114,6 +125,18 @@ class FeedViewModel(
         _state.update { it.copy(preloadMode = mode) }
         val state = _state.value
         preloadForActiveIndex(state.activeItemIndex, state.items)
+    }
+
+    fun onLikeToggled(itemId: String) {
+        val currentlyLiked = _state.value.likedItemIds.contains(itemId)
+        videoInteractionStore.setLiked(itemId, !currentlyLiked)
+        val updatedLikedItemIds = videoInteractionStore.getLikedItemIds()
+        _state.update { it.copy(likedItemIds = updatedLikedItemIds) }
+    }
+
+    fun onBadNetworkModeChanged(enabled: Boolean) {
+        networkSimulationState.setBadNetworkEnabled(enabled)
+        _state.update { it.copy(isBadNetworkEnabled = enabled) }
     }
 
     private fun preloadForActiveIndex(index: Int, items: List<VideoItem>) {

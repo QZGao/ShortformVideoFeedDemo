@@ -2,6 +2,8 @@ package com.example.shortformvideofeed.ui.feed
 
 import androidx.media3.common.Player
 import androidx.paging.PagingData
+import com.example.shortformvideofeed.core.network.NetworkSimulationState
+import com.example.shortformvideofeed.data.local.VideoInteractionStore
 import com.example.shortformvideofeed.domain.model.PreloadMode
 import com.example.shortformvideofeed.domain.model.VideoItem
 import com.example.shortformvideofeed.domain.repository.FeedRepository
@@ -36,24 +38,16 @@ class FeedViewModelTest {
     fun init_loadsFeedAndPreloadsNextItem() = runTest {
         withMainDispatcher(testScheduler) {
             val repository = FakeFeedRepository(
-                observeFeedFlow = flowOf(
-                    FeedResult.Loading,
-                    FeedResult.Success(
-                        items = listOf(
-                            videoItem("1", "https://example.com/1.mp4"),
-                            videoItem("2", "https://example.com/2.mp4"),
-                            videoItem("3", "https://example.com/3.mp4")
-                        ),
-                        source = FeedSource.REMOTE
-                    )
-                )
+                observeFeedFlow = feedFlow(resultItems = listOf("1", "2", "3"))
             )
             val player = FakeFeedPlayerController()
-            val viewModel = FeedViewModel(
-                observeFeedUseCase = ObserveFeedUseCase(repository),
-                observePagedFeedUseCase = ObservePagedFeedUseCase(repository),
-                refreshFeedUseCase = RefreshFeedUseCase(repository),
-                playerManager = player
+            val networkState = NetworkSimulationState()
+            val interactionStore = FakeVideoInteractionStore()
+            val viewModel = buildViewModel(
+                repository = repository,
+                player = player,
+                networkState = networkState,
+                interactionStore = interactionStore
             )
 
             advanceUntilIdle()
@@ -63,6 +57,8 @@ class FeedViewModelTest {
             assertEquals(FeedSource.REMOTE, state.source)
             assertEquals(3, state.items.size)
             assertEquals(listOf("https://example.com/2.mp4"), player.preloadCalls.last())
+            assertEquals(emptySet(), state.likedItemIds)
+            assertEquals(false, state.isBadNetworkEnabled)
         }
     }
 
@@ -70,24 +66,14 @@ class FeedViewModelTest {
     fun onActiveItemChanged_updatesActiveIndexAndActivatesPlayer() = runTest {
         withMainDispatcher(testScheduler) {
             val repository = FakeFeedRepository(
-                observeFeedFlow = flowOf(
-                    FeedResult.Loading,
-                    FeedResult.Success(
-                        items = listOf(
-                            videoItem("1", "https://example.com/1.mp4"),
-                            videoItem("2", "https://example.com/2.mp4"),
-                            videoItem("3", "https://example.com/3.mp4")
-                        ),
-                        source = FeedSource.REMOTE
-                    )
-                )
+                observeFeedFlow = feedFlow(resultItems = listOf("1", "2", "3"))
             )
             val player = FakeFeedPlayerController()
-            val viewModel = FeedViewModel(
-                observeFeedUseCase = ObserveFeedUseCase(repository),
-                observePagedFeedUseCase = ObservePagedFeedUseCase(repository),
-                refreshFeedUseCase = RefreshFeedUseCase(repository),
-                playerManager = player
+            val viewModel = buildViewModel(
+                repository = repository,
+                player = player,
+                networkState = NetworkSimulationState(),
+                interactionStore = FakeVideoInteractionStore()
             )
 
             advanceUntilIdle()
@@ -104,25 +90,17 @@ class FeedViewModelTest {
     fun onPreloadModeChanged_switchesRequestedPreloadWindow() = runTest {
         withMainDispatcher(testScheduler) {
             val repository = FakeFeedRepository(
-                observeFeedFlow = flowOf(
-                    FeedResult.Loading,
-                    FeedResult.Success(
-                        items = listOf(
-                            videoItem("1", "https://example.com/1.mp4"),
-                            videoItem("2", "https://example.com/2.mp4"),
-                            videoItem("3", "https://example.com/3.mp4"),
-                            videoItem("4", "https://example.com/4.mp4")
-                        ),
-                        source = FeedSource.REMOTE
-                    )
+                observeFeedFlow = feedFlow(
+                    resultItems = listOf("1", "2", "3", "4"),
+                    source = FeedSource.REMOTE
                 )
             )
             val player = FakeFeedPlayerController()
-            val viewModel = FeedViewModel(
-                observeFeedUseCase = ObserveFeedUseCase(repository),
-                observePagedFeedUseCase = ObservePagedFeedUseCase(repository),
-                refreshFeedUseCase = RefreshFeedUseCase(repository),
-                playerManager = player
+            val viewModel = buildViewModel(
+                repository = repository,
+                player = player,
+                networkState = NetworkSimulationState(),
+                interactionStore = FakeVideoInteractionStore()
             )
 
             advanceUntilIdle()
@@ -138,15 +116,15 @@ class FeedViewModelTest {
     fun onPullToRefresh_incrementsRefreshSignalAndRefreshes() = runTest {
         withMainDispatcher(testScheduler) {
             val repository = FakeFeedRepository(
-                observeFeedFlow = flowOf(FeedResult.Loading, FeedResult.Success(emptyList(), FeedSource.CACHE)),
+                observeFeedFlow = feedFlow(resultItems = emptyList(), source = FeedSource.CACHE),
                 observePagedFlow = flowOf(PagingData.from(emptyList()))
             )
             val player = FakeFeedPlayerController()
-            val viewModel = FeedViewModel(
-                observeFeedUseCase = ObserveFeedUseCase(repository),
-                observePagedFeedUseCase = ObservePagedFeedUseCase(repository),
-                refreshFeedUseCase = RefreshFeedUseCase(repository),
-                playerManager = player
+            val viewModel = buildViewModel(
+                repository = repository,
+                player = player,
+                networkState = NetworkSimulationState(),
+                interactionStore = FakeVideoInteractionStore()
             )
             advanceUntilIdle()
 
@@ -166,15 +144,15 @@ class FeedViewModelTest {
     fun onPullToRefresh_setsAndClearsRefreshingState() = runTest {
         withMainDispatcher(testScheduler) {
             val repository = FakeFeedRepository(
-                observeFeedFlow = flowOf(FeedResult.Loading, FeedResult.Success(emptyList(), FeedSource.REMOTE)),
+                observeFeedFlow = feedFlow(emptyList()),
                 observePagedFlow = flowOf(PagingData.from(emptyList()))
             )
             val player = FakeFeedPlayerController()
-            val viewModel = FeedViewModel(
-                observeFeedUseCase = ObserveFeedUseCase(repository),
-                observePagedFeedUseCase = ObservePagedFeedUseCase(repository),
-                refreshFeedUseCase = RefreshFeedUseCase(repository),
-                playerManager = player
+            val viewModel = buildViewModel(
+                repository = repository,
+                player = player,
+                networkState = NetworkSimulationState(),
+                interactionStore = FakeVideoInteractionStore()
             )
             advanceUntilIdle()
 
@@ -184,6 +162,56 @@ class FeedViewModelTest {
             advanceUntilIdle()
 
             assertFalse(viewModel.state.value.isRefreshing)
+        }
+    }
+
+    @Test
+    fun onLikeToggled_togglesLikesInViewStateAndStore() = runTest {
+        withMainDispatcher(testScheduler) {
+            val repository = FakeFeedRepository(
+                observeFeedFlow = feedFlow(emptyList(), source = FeedSource.REMOTE)
+            )
+            val player = FakeFeedPlayerController()
+            val networkState = NetworkSimulationState()
+            val interactionStore = FakeVideoInteractionStore()
+            val viewModel = buildViewModel(
+                repository = repository,
+                player = player,
+                networkState = networkState,
+                interactionStore = interactionStore
+            )
+            advanceUntilIdle()
+
+            viewModel.onLikeToggled("2")
+            assertEquals(setOf("2"), viewModel.state.value.likedItemIds)
+            assertEquals(setOf("2"), interactionStore.getLikedItemIds())
+
+            viewModel.onLikeToggled("2")
+            assertEquals(emptySet(), viewModel.state.value.likedItemIds)
+            assertEquals(emptySet(), interactionStore.getLikedItemIds())
+        }
+    }
+
+    @Test
+    fun onBadNetworkModeChanged_updatesUiAndNetworkState() = runTest {
+        withMainDispatcher(testScheduler) {
+            val repository = FakeFeedRepository(
+                observeFeedFlow = feedFlow(emptyList(), source = FeedSource.REMOTE)
+            )
+            val player = FakeFeedPlayerController()
+            val networkState = NetworkSimulationState()
+            val interactionStore = FakeVideoInteractionStore()
+            val viewModel = buildViewModel(
+                repository = repository,
+                player = player,
+                networkState = networkState,
+                interactionStore = interactionStore
+            )
+            advanceUntilIdle()
+
+            viewModel.onBadNetworkModeChanged(true)
+            assertTrue(viewModel.state.value.isBadNetworkEnabled)
+            assertTrue(networkState.isBadNetworkEnabled())
         }
     }
 
@@ -197,6 +225,40 @@ class FeedViewModelTest {
         } finally {
             Dispatchers.resetMain()
         }
+    }
+
+    private fun feedFlow(
+        resultItems: List<String>,
+        source: FeedSource = FeedSource.REMOTE,
+        showLoadingOnly: Boolean = false
+    ): Flow<FeedResult> {
+        val results = mutableListOf<FeedResult>()
+        results.add(FeedResult.Loading)
+        if (!showLoadingOnly) {
+            results.add(
+                FeedResult.Success(
+                    items = resultItems.map { id -> videoItem(id, "https://example.com/$id.mp4") },
+                    source = source
+                )
+            )
+        }
+        return flowOf(*results.toTypedArray())
+    }
+
+    private fun buildViewModel(
+        repository: FakeFeedRepository,
+        player: FakeFeedPlayerController,
+        networkState: NetworkSimulationState,
+        interactionStore: FakeVideoInteractionStore
+    ): FeedViewModel {
+        return FeedViewModel(
+            observeFeedUseCase = ObserveFeedUseCase(repository),
+            observePagedFeedUseCase = ObservePagedFeedUseCase(repository),
+            refreshFeedUseCase = RefreshFeedUseCase(repository),
+            playerManager = player,
+            networkSimulationState = networkState,
+            videoInteractionStore = interactionStore
+        )
     }
 
     private fun videoItem(id: String, videoUrl: String) = VideoItem(
@@ -256,5 +318,21 @@ class FeedViewModelTest {
         override fun release() {
             playbackStateFlow.update { it.copy(isPlaying = false) }
         }
+    }
+
+    private class FakeVideoInteractionStore : VideoInteractionStore {
+        private val likedItems = mutableSetOf<String>()
+
+        override fun isLiked(itemId: String): Boolean = likedItems.contains(itemId)
+
+        override fun setLiked(itemId: String, liked: Boolean) {
+            if (liked) {
+                likedItems.add(itemId)
+            } else {
+                likedItems.remove(itemId)
+            }
+        }
+
+        override fun getLikedItemIds(): Set<String> = likedItems.toSet()
     }
 }

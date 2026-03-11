@@ -21,6 +21,8 @@ This project demonstrates a short-form feed stack with two data sources:
 - Playback position persistence across process restarts (SharedPreferences-backed store)
 - Macrobenchmark scenarios scaffolded under `app/src/androidTest`
 - Basic playback tests + visibility selection tests in unit test suite
+- Like button toggle persisted in local interaction store
+- Simulated bad-network mode to force remote fetch errors for reliability testing
 
 ## Project structure
 
@@ -67,6 +69,7 @@ app/src/main/java/com/example/shortformvideofeed/
 ## Verification
 
 - Unit tests: `./gradlew testDebugUnitTest --no-daemon`
+- Build: `./gradlew assembleDebug --no-daemon`
 
 ## Quick run
 

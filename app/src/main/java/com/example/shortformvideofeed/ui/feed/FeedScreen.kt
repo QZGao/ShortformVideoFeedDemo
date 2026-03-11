@@ -25,6 +25,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.Switch
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -146,7 +147,9 @@ fun FeedScreen(
                                     FeedVideoItem(
                                         item = item,
                                         isActive = index == state.activeItemIndex,
+                                        isLiked = state.likedItemIds.contains(item.id),
                                         playerManager = playerManager,
+                                        onLikeToggled = { viewModel.onLikeToggled(item.id) },
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .fillMaxHeight()
@@ -174,6 +177,8 @@ fun FeedScreen(
                     playbackState = playbackState,
                     preloadMode = state.preloadMode,
                     onPreloadModeChange = { mode -> viewModel.onPreloadModeChanged(mode) },
+                    isBadNetworkEnabled = state.isBadNetworkEnabled,
+                    onBadNetworkModeChange = { enabled -> viewModel.onBadNetworkModeChanged(enabled) },
                     modifier = Modifier
                         .align(Alignment.TopStart)
                         .navigationBarsPadding()
@@ -245,7 +250,9 @@ private fun NetworkErrorBanner(
 private fun FeedVideoItem(
     item: com.example.shortformvideofeed.domain.model.VideoItem,
     isActive: Boolean,
+    isLiked: Boolean,
     playerManager: FeedPlayerManager,
+    onLikeToggled: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Box(modifier = modifier) {
@@ -268,6 +275,15 @@ private fun FeedVideoItem(
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize()
             )
+        }
+
+        Button(
+            onClick = onLikeToggled,
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(12.dp)
+        ) {
+            Text(text = if (isLiked) "♥ Liked" else "♡ Like")
         }
 
         Column(
@@ -311,6 +327,8 @@ private fun DebugOverlay(
     playbackState: PlaybackUiState,
     preloadMode: PreloadMode,
     onPreloadModeChange: (PreloadMode) -> Unit,
+    isBadNetworkEnabled: Boolean,
+    onBadNetworkModeChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -351,6 +369,18 @@ private fun DebugOverlay(
                         Text(text = mode.name)
                     }
                 }
+            }
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(text = "Simulate bad network", color = Color.White, fontSize = 12.sp)
+                Switch(
+                    checked = isBadNetworkEnabled,
+                    onCheckedChange = onBadNetworkModeChange
+                )
             }
         }
     }
