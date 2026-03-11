@@ -15,6 +15,7 @@ import com.example.shortformvideofeed.ui.theme.AppTheme
 
 class MainActivity : ComponentActivity() {
     private lateinit var playerManager: FeedPlayerManager
+    private lateinit var feedViewModel: FeedViewModel
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -23,17 +24,16 @@ class MainActivity : ComponentActivity() {
             context = applicationContext,
             playbackPositionStore = SharedPreferencesPlaybackPositionStore(applicationContext)
         )
+        feedViewModel = FeedViewModel(
+            observeFeedUseCase = ObserveFeedUseCase(container.feedRepository),
+            observePagedFeedUseCase = ObservePagedFeedUseCase(container.feedRepository),
+            refreshFeedUseCase = RefreshFeedUseCase(container.feedRepository),
+            playerManager = playerManager,
+            networkSimulationState = container.networkSimulationState,
+            videoInteractionStore = container.videoInteractionStore
+        )
 
         setContent {
-            val feedViewModel = FeedViewModel(
-                observeFeedUseCase = ObserveFeedUseCase(container.feedRepository),
-                observePagedFeedUseCase = ObservePagedFeedUseCase(container.feedRepository),
-                refreshFeedUseCase = RefreshFeedUseCase(container.feedRepository),
-                playerManager = playerManager,
-                networkSimulationState = container.networkSimulationState,
-                videoInteractionStore = container.videoInteractionStore
-            )
-
             AppTheme {
                 FeedScreen(
                     viewModel = feedViewModel,

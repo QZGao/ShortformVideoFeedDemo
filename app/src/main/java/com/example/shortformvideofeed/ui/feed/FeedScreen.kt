@@ -81,7 +81,7 @@ fun FeedScreen(
     }
 
     LaunchedEffect(state.activeItemIndex) {
-        if (state.activeItemIndex < pagingItems.itemCount) {
+        if (state.activeItemIndex >= 0 && state.activeItemIndex < pagingItems.itemCount) {
             listState.scrollToItem(state.activeItemIndex)
         }
     }
@@ -170,8 +170,14 @@ fun FeedScreen(
                     }
                 }
 
+                val activeItemIdFromPaging = pagingItems
+                    .itemSnapshotList
+                    .items
+                    .getOrNull(state.activeItemIndex)
+                    ?.id
+
                 DebugOverlay(
-                    activeItemId = state.items.getOrNull(state.activeItemIndex)?.id ?: pagingItems[state.activeItemIndex]?.id,
+                    activeItemId = state.items.getOrNull(state.activeItemIndex)?.id ?: activeItemIdFromPaging,
                     source = state.source.name,
                     isBuffering = playbackState.isBuffering,
                     playbackState = playbackState,
