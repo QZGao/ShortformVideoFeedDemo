@@ -20,7 +20,7 @@ android {
         buildConfigField(
             "String",
             "FEED_REMOTE_URL",
-            "\"https://raw.githubusercontent.com/placeholder-org/shortform-video-sample/main/feed.json\""
+            "\"https://raw.githubusercontent.com/QZGao/ShortformVideoFeedDemo/main/app/src/main/assets/feed.json\""
         )
     }
 

@@ -89,12 +89,13 @@ class FeedViewModel(
                     is FeedResult.Error -> {
                         val hasExistingItems = _state.value.items.isNotEmpty()
                         val shouldKeepItems = result.recoverable && hasExistingItems
+                        val sourceForError = if (shouldKeepItems) _state.value.source else result.source
                         _state.update {
                             it.copy(
                                 isLoading = false,
                                 isRefreshing = false,
                                 errorMessage = result.message,
-                                source = if (shouldKeepItems) result.source else FeedSource.UNKNOWN,
+                                source = sourceForError,
                                 items = if (shouldKeepItems) it.items else emptyList()
                             )
                         }
@@ -112,11 +113,13 @@ class FeedViewModel(
 
     fun onActiveItemChanged(index: Int) {
         val items = _state.value.items
-        val safeIndex = index.coerceIn(0, (items.size - 1).coerceAtLeast(0))
+        if (items.isEmpty()) return
+
+        val safeIndex = index.coerceIn(0, items.size - 1)
         _state.update { it.copy(activeItemIndex = safeIndex) }
 
         val currentItem = items.getOrNull(safeIndex)
-        playerManager.activate(currentItem?.id, currentItem?.videoUrl)
+        playerManager.activate(currentItem?.id, currentItem?.videoUrl, currentItem?.durationMs)
         preloadForActiveIndex(safeIndex, items)
     }
 

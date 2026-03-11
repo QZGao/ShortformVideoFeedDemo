@@ -81,7 +81,7 @@ class FeedViewModelTest {
             advanceUntilIdle()
 
             assertEquals(2, viewModel.state.value.activeItemIndex)
-            assertEquals("3" to "https://example.com/3.mp4", player.activateCalls.last())
+            assertEquals(Triple("3", "https://example.com/3.mp4", 12000L), player.activateCalls.last())
             assertEquals(emptyList(), player.preloadCalls.last())
         }
     }
@@ -295,11 +295,11 @@ class FeedViewModelTest {
             PlaybackUiState(selectedItemId = null, playbackState = Player.STATE_IDLE, isBuffering = false)
         )
         override val playbackState = playbackStateFlow
-        val activateCalls = mutableListOf<Pair<String?, String?>>()
+        val activateCalls = mutableListOf<Triple<String?, String?, Long?>>()
         val preloadCalls = mutableListOf<List<String>>()
 
-        override fun activate(itemId: String?, videoUrl: String?) {
-            activateCalls.add(Pair(itemId, videoUrl))
+        override fun activate(itemId: String?, videoUrl: String?, itemDurationMs: Long?) {
+            activateCalls.add(Triple(itemId, videoUrl, itemDurationMs))
             playbackStateFlow.update { it.copy(selectedItemId = itemId, startupLatencyMs = null) }
         }
 

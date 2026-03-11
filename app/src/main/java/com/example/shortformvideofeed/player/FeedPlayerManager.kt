@@ -20,7 +20,7 @@ data class PlaybackUiState(
 
 interface FeedPlayerController {
     val playbackState: StateFlow<PlaybackUiState>
-    fun activate(itemId: String?, videoUrl: String?)
+    fun activate(itemId: String?, videoUrl: String?, itemDurationMs: Long? = null)
     fun preload(nextVideoUrls: List<String>)
     fun pause()
     fun resume()
@@ -83,7 +83,7 @@ class FeedPlayerManager(
         )
     }
 
-    override fun activate(itemId: String?, videoUrl: String?) {
+    override fun activate(itemId: String?, videoUrl: String?, itemDurationMs: Long?) {
         _playbackState.update { it.copy(lastError = null) }
         val previouslySelectedItemId = selectedItemId
         if (previouslySelectedItemId != null && previouslySelectedItemId != itemId) {
@@ -98,20 +98,30 @@ class FeedPlayerManager(
             return
         }
 
-        if (selectedItemId == itemId && player.playbackState != Player.STATE_IDLE) {
-            player.play()
-            return
+        if (selectedItemId == itemId) {
+            if (player.playbackState == Player.STATE_ENDED) {
+                player.seekTo(0L)
+            } else if (player.playbackState != Player.STATE_IDLE) {
+                player.play()
+                return
+            }
         }
 
         selectedItemId = itemId
         selectedAtMs = SystemClock.elapsedRealtime()
         expectingFirstFrameForId = itemId
-        player.setMediaItem(MediaItem.fromUri(videoUrl))
-        player.prepare()
         val resumePositionMs = playbackPositionStore.load(itemId) ?: playbackPositionByItemId[itemId]
-        if (resumePositionMs != null && resumePositionMs > 0L) {
-            player.seekTo(resumePositionMs)
+        val durationMs = itemDurationMs ?: 0L
+        val startPositionMs = resumePositionMs
+            ?.takeIf { it > 0L && durationMs > 0L && it < durationMs - 500L }
+            ?: 0L
+        val mediaItem = MediaItem.fromUri(videoUrl)
+        if (startPositionMs > 0L) {
+            player.setMediaItem(mediaItem, startPositionMs)
+        } else {
+            player.setMediaItem(mediaItem)
         }
+        player.prepare()
         player.play()
         _playbackState.update {
             it.copy(
@@ -166,6 +176,8 @@ class FeedPlayerManager(
     private fun persistCurrentPosition(itemId: String?) {
         if (itemId == null) return
         val positionMs = player.currentPosition
+        val durationMs = player.duration
+        if (durationMs > 0 && positionMs >= durationMs) return
         playbackPositionByItemId[itemId] = positionMs
         playbackPositionStore.save(itemId, positionMs)
     }

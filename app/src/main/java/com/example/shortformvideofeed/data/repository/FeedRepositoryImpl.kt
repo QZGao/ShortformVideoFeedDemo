@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onStart
+import retrofit2.HttpException
 import java.io.IOException
 import java.net.UnknownHostException
 
@@ -150,6 +151,12 @@ class FeedRepositoryImpl(
 
     private fun remoteErrorMessage(error: Throwable): String {
         return when (error) {
+            is HttpException -> {
+                when (error.code()) {
+                    404 -> "Remote feed URL not found (404). Update FEED_REMOTE_URL in app/build.gradle.kts."
+                    else -> "Remote request failed (${error.code()}): ${error.message()}"
+                }
+            }
             is IOException, is UnknownHostException -> "Network error while downloading remote feed."
             else -> error.message ?: "Unknown remote fetch error."
         }

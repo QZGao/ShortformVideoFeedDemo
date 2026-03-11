@@ -12,10 +12,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.wrapContentWidth
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -40,11 +43,13 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.platform.testTag
 import androidx.media3.common.Player
+import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
 import androidx.paging.LoadState
 import androidx.paging.compose.collectAsLazyPagingItems
 import coil.compose.AsyncImage
 import com.example.shortformvideofeed.domain.model.PreloadMode
+import com.example.shortformvideofeed.domain.repository.FeedSource
 import com.example.shortformvideofeed.player.FeedPlayerManager
 import com.example.shortformvideofeed.player.PlaybackUiState
 import com.google.accompanist.swiperefresh.SwipeRefresh
@@ -161,7 +166,7 @@ fun FeedScreen(
                 }
 
                 state.errorMessage?.let { errorMessage ->
-                    if (pagingItems.itemCount > 0) {
+                    if (state.source == FeedSource.REMOTE && state.items.isEmpty()) {
                         NetworkErrorBanner(
                             message = errorMessage,
                             onRetry = { viewModel.onPullToRefresh() },
@@ -187,8 +192,9 @@ fun FeedScreen(
                     onBadNetworkModeChange = { enabled -> viewModel.onBadNetworkModeChanged(enabled) },
                     modifier = Modifier
                         .align(Alignment.TopStart)
+                        .statusBarsPadding()
                         .navigationBarsPadding()
-                        .padding(12.dp)
+                        .padding(top = 72.dp, start = 12.dp, end = 12.dp, bottom = 12.dp)
                 )
             }
         }
@@ -229,13 +235,11 @@ private fun NetworkErrorBanner(
     modifier: Modifier = Modifier
 ) {
     Box(
-        modifier = Modifier
-            .then(modifier)
-            .fillMaxWidth()
+        modifier = modifier
             .padding(12.dp)
     ) {
         Card(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.wrapContentWidth(),
             colors = CardDefaults.cardColors(containerColor = Color(0xCC000000)),
             shape = RoundedCornerShape(12.dp)
         ) {
@@ -266,8 +270,10 @@ private fun FeedVideoItem(
             AndroidView(
                 factory = { context ->
                     PlayerView(context).apply {
-                        useController = false
+                        controllerShowTimeoutMs = 0
+                        useController = true
                         setShowBuffering(PlayerView.SHOW_BUFFERING_WHEN_PLAYING)
+                        resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
                     }
                 },
                 modifier = Modifier.fillMaxSize()
@@ -338,7 +344,7 @@ private fun DebugOverlay(
     modifier: Modifier = Modifier
 ) {
     Card(
-        modifier = modifier,
+        modifier = modifier.widthIn(max = 300.dp),
         colors = CardDefaults.cardColors(containerColor = Color.Black.copy(alpha = 0.7f)),
         shape = RoundedCornerShape(12.dp)
     ) {
